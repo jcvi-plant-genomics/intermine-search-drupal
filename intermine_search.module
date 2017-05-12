@@ -1,0 +1,257 @@
+<?php
+
+/**
+ * Implements hook_menu()
+ */
+function intermine_search_menu() {
+    $items = array();
+
+    $items['admin/config/search/intermine_search'] = array(
+        'title' => 'InterMine Search',
+        'description' => 'Configuration for InterMine Search module',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('intermine_search_form'),
+        'access arguments' => array('access administration pages'),
+        'type' => MENU_NORMAL_ITEM,
+    );
+
+    return $items;
+}
+
+/**
+ * Page callback: InterMine Search settings
+ *
+ * @see intermine_search_menu()
+ */
+function intermine_search_form($form, &$form_state) {
+    $form['intermine_name']  = array(
+        '#type' => 'textfield',
+        '#title' => t('InterMine instance name'),
+        '#default_value' => variable_get('intermine_name', 'MedicMine'),
+        '#description' => t('This is the name of the InterMine instance'),
+        '#required' => TRUE,
+    );
+
+    $form['intermine_base_url'] = array(
+        '#type' => 'textfield',
+        '#title' => t('InterMine Base URL'),
+        '#default_value' => variable_get('intermine_base_url', 'http://medicmine.jcvi.org/medicmine'),
+        '#description' => t('This is the base URL for the InterMine instance (without trailing slash)'),
+        '#required' => TRUE,
+    );
+
+    $form['intermine_search_examples'] = array(
+        '#type' => 'textfield',
+        '#title' => t('InterMine example search terms'),
+        '#default_value' => 'e.g. Medtr2g036650, plasma membrane, sucrose synthase',
+        '#description' => t('This is a set of example InterMine search terms to display as help text'),
+        '#required' => FALSE,
+    );
+
+    return system_settings_form($form);
+}
+
+function intermine_search_search_info() {
+    $intermine_name = variable_get('intermine_name');
+    return array(
+        'title' => $intermine_name,
+        'path' => strtolower($intermine_name)
+    );
+}
+
+function intermine_search_form_search_form_alter(&$form, &$form_state) {
+  if ($form['module']['#value'] == 'intermine_search') {
+    $form['intermine_search_description'] = array(
+      '#type' => 'markup',
+      '#prefix' => '<p class="help-block">',
+      '#suffix' => '</p>',
+      '#markup' => t('Search ' . variable_get('intermine_name')
+                     . '. Enter names, identifiers or keywords for genes, '
+                     . 'proteins, ontology terms, authors, etc. '
+                     .  variable_get('intermine_search_examples') )
+    );
+  }
+}
+
+function _intermine_search_service_url($keys, $conditions, $facets = array()) {
+    $params = array('q='.urlencode($keys));
+    foreach ($facets as $facet => $value) {
+        $params[] = 'facet_'.$facet.'='.$value;
+    }
+    return variable_get('intermine_base_url') . '/service/search?' . implode('&', $params);
+}
+
+function intermine_search_search_execute($keys = NULL, $conditions = NULL) {
+  $facets = _intermine_search_extract_facets();
+  $results = array();
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  // curl_setopt($ch, CURLOPT_SSLVERSION,3);
+
+  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+  curl_setopt($ch, CURLOPT_URL, _intermine_search_service_url($keys, $conditions, $facets));
+  $response_json = curl_exec($ch);
+  curl_close($ch);
+  $response = json_decode($response_json);
+  if(!($response_json == NULL)){
+    if (count($response->results) > 0) {
+      foreach($response->results as $result) {
+        $results[] = array(
+         'link' => variable_get('intermine_base_url') . '/report.do?id=' . $result->id,
+         'type' => $result->type,
+         'title' => _intermine_search_result_title($result),
+         'snippet' => theme('intermine_search_result__'.strtolower($result->type), array('result' => $result))
+        );
+      }
+
+      $results[] = array(
+        'link' => '',
+        'type' => 'facets',
+        'extra' => $response->facets
+      );
+   }
+ }
+  return $results;
+}
+
+function _intermine_search_extract_facets() {
+  $facets = array();
+  foreach ($_REQUEST as $key => $value) {
+    if ($key != 'q') {
+      $facets[$key] = $value;
+    }
+  }
+  return $facets;
+}
+
+function intermine_search_search_page($results) {
+  $output = array();
+  if (count($results) == 0) {
+    $contentSearch = 'search/node/' . arg(2);
+    $output['noresults'] = array(
+        '#markup' => '<h2>No results</h2><p>There were no results in ' . variable_get('intermine_name')
+                     . ' for your search term(s). Try searching '.l('Site Content', $contentSearch).' instead.</p>'
+    );
+  } else {
+    $pageUrl = request_path();
+    $search_facets = _intermine_search_extract_facets();
+    if (count($search_facets) > 0) {
+      $output['facets'] = array(
+        '#prefix' => '<div class="well well-sm">',
+        '#suffix' => '</div>',
+        'info' => array(
+          '#markup' => '<p>Results filtered by:</p>'
+        ),
+        'list' => array(
+          '#theme' => 'item_list',
+          '#items' => array(),
+          '#title' => null
+        )
+      );
+      foreach($search_facets as $f => $v) {
+        $unrefine = $search_facets;
+        unset($unrefine[$f]);
+        $output['facets']['list']['#items'][] = l('<i class="fa fa-minus-circle"></i> '.$f.': '.$v, $pageUrl, array('query' => $unrefine, 'html' => true, 'attributes'=> array('class'=> array('text-danger'))));
+      }
+    }
+
+    $summary['prefix']['#markup'] = '<div class="col-md-3"><h3>Refine results by:</h3>';
+
+    $content['prefix']['#markup'] = '<div class="col-md-9"><ol class="search-results">';
+
+    foreach ($results as $entry) {
+      if ($entry['type'] == 'facets') {
+        $facets = $entry['extra'];
+        foreach($facets as $type => $info) {
+          $items = array();
+          foreach ($info as $detail => $count) {
+            $refine = $search_facets;
+            $refine[$type] = $detail;
+            $items[] = l($detail. ' <span class="badge">'.$count.'</span>', $pageUrl, array('html' => true, 'query' => $refine));
+          }
+          $summary['facets'][] = array(
+            '#theme' => 'item_list',
+            '#items' => $items,
+            '#title' => $type
+          );
+        }
+      } else {
+        $content[] = array(
+          '#theme' => 'search_result',
+          '#result' => $entry,
+          '#module' => 'my_module_name',
+        );
+      }
+    }
+    $content['suffix']['#markup'] = '</ol>' . theme('pager') . '</div>';
+    $summary['suffix']['#markup'] = '</div>';
+
+    $output['results'] = array(
+      'prefix' => array('#markup' => '<div class="row">'),
+      'summary' => $summary,
+      'output' => $content,
+      'suffix' => array('#markup' => '</div>'),
+    );
+  }
+
+
+  return $output;
+}
+
+function intermine_search_theme() {
+  return array(
+    'intermine_search_result' => array(
+      'pattern' => 'intermine_search_result__',
+      'variables' => array(
+        'result' => NULL
+      )
+    )
+  );
+}
+
+function _intermine_search_result_title($result) {
+  switch($result->type) {
+    case 'Gene':
+    case 'MRNA':
+    case 'Protein':
+      return $result->fields->primaryIdentifier;
+    case 'Publication':
+      return $result->fields->title;
+    case 'Author':
+    case 'Lab':
+    case 'InteractionTerm':
+    case 'GOTerm':
+    case 'SOTerm':
+    case 'Sample':
+    case 'OntologyTerm':
+      return $result->fields->name;
+    case 'Synonym':
+      return $result->fields->value;
+    default:
+      // just return first object key
+      $fields = (Array)$result->fields;
+      $title = array_shift($fields);
+      return $title;
+  }
+}
+
+function _intermine_search_nice_field_name($field_name) {
+  return ucfirst(preg_replace('/[.]/', ' ', preg_replace_callback('/([A-Z])/', function($matches) {
+    return ' '.strtolower($matches[0]);
+  }, $field_name)));
+}
+
+function theme_intermine_search_result($variables) {
+  $result = $variables['result'];
+  $output = '<dl class="dl-horizontal">';
+  $output .= '<dt>Result type</dt><dd><i class="fa fa-tag"></i> ' . $result->type . '</dd>';
+  foreach ($result->fields as $name => $value) {
+    $nice_name = _intermine_search_nice_field_name($name);
+    $output .= '<dt>'.$nice_name.'</dt>';
+    $output .= '<dd>'.$value.'</dd>';
+  }
+  $output .= '</dl>';
+  return $output;
+}

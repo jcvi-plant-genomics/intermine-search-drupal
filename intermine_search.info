@@ -1,0 +1,11 @@
+name = InterMine Search
+description = Search integration for an InterMine instance.
+package = InterMine
+version = 7.x-1.0
+core = 7.x
+
+; ADMIN CONFIG
+configure = admin/config/search/intermine_search
+
+; STYLESHEETS
+stylesheets[all][] = intermine_search.css
