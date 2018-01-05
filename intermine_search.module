@@ -4,18 +4,18 @@
  * Implements hook_menu()
  */
 function intermine_search_menu() {
-    $items = array();
+  $items = array();
 
-    $items['admin/config/search/intermine_search'] = array(
-        'title' => 'InterMine Search',
-        'description' => 'Configuration for InterMine Search module',
-        'page callback' => 'drupal_get_form',
-        'page arguments' => array('intermine_search_form'),
-        'access arguments' => array('access administration pages'),
-        'type' => MENU_NORMAL_ITEM,
-    );
+  $items['admin/config/search/intermine_search'] = array(
+    'title' => 'InterMine Search',
+    'description' => 'Configuration for InterMine Search module',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('intermine_search_form'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
 
-    return $items;
+  return $items;
 }
 
 /**
@@ -24,39 +24,39 @@ function intermine_search_menu() {
  * @see intermine_search_menu()
  */
 function intermine_search_form($form, &$form_state) {
-    $form['intermine_name']  = array(
-        '#type' => 'textfield',
-        '#title' => t('InterMine instance name'),
-        '#default_value' => variable_get('intermine_name', 'MedicMine'),
-        '#description' => t('This is the name of the InterMine instance'),
-        '#required' => TRUE,
-    );
+  $form['intermine_name']  = array(
+    '#type' => 'textfield',
+    '#title' => t('InterMine name'),
+    '#default_value' => variable_get('intermine_name', 'LegFed'),
+    '#description' => t('This is the name of a single InterMine instance or a collection of InterMine instances'),
+    '#required' => TRUE,
+  );
 
-    $form['intermine_base_url'] = array(
-        '#type' => 'textfield',
-        '#title' => t('InterMine Base URL'),
-        '#default_value' => variable_get('intermine_base_url', 'http://medicmine.jcvi.org/medicmine'),
-        '#description' => t('This is the base URL for the InterMine instance (without trailing slash)'),
-        '#required' => TRUE,
-    );
+  $form['intermine_base_url'] = array(
+    '#type' => 'textarea',
+    '#title' => t('InterMine Base URL'),
+    '#default_value' => variable_get('intermine_base_url', '[{"intermine_base_url":"http://medicmine.jcvi.org/medicmine","intermine_name":"MedicMine"},{"intermine_base_url":"https://mines.legumeinfo.org/soymine","intermine_name":"SoyMine"}]'),
+    '#description' => t('This is the base URL for a single InterMine instance (without trailing slash) or a JSON object encoding names and URLs for a collection of instances'),
+    '#required' => TRUE,
+  );
 
-    $form['intermine_search_examples'] = array(
-        '#type' => 'textfield',
-        '#title' => t('InterMine example search terms'),
-        '#default_value' => 'e.g. Medtr2g036650, plasma membrane, sucrose synthase',
-        '#description' => t('This is a set of example InterMine search terms to display as help text'),
-        '#required' => FALSE,
-    );
+  $form['intermine_search_examples'] = array(
+    '#type' => 'textfield',
+    '#title' => t('InterMine example search terms'),
+    '#default_value' => 'e.g. Medtr2g036650, plasma membrane, sucrose synthase, Glyma.16G153700, Glyma.16G153700.1, BARCSOYSSR_04_1400, Seed yield 15-5',
+    '#description' => t('This is a set of example InterMine search terms to display as help text'),
+    '#required' => FALSE,
+  );
 
-    return system_settings_form($form);
+  return system_settings_form($form);
 }
 
 function intermine_search_search_info() {
-    $intermine_name = variable_get('intermine_name');
-    return array(
-        'title' => $intermine_name,
-        'path' => strtolower($intermine_name)
-    );
+  $intermine_name = variable_get('intermine_name');
+  return array(
+    'title' => $intermine_name,
+    'path' => strtolower($intermine_name)
+  );
 }
 
 function intermine_search_form_search_form_alter(&$form, &$form_state) {
@@ -66,53 +66,148 @@ function intermine_search_form_search_form_alter(&$form, &$form_state) {
       '#prefix' => '<p class="help-block">',
       '#suffix' => '</p>',
       '#markup' => t('Search ' . variable_get('intermine_name')
-                     . '. Enter names, identifiers or keywords for genes, '
-                     . 'proteins, ontology terms, authors, etc. '
-                     .  variable_get('intermine_search_examples') )
+      . '. Enter names, identifiers or keywords for genes, '
+      . 'proteins, ontology terms, QTLs, etc. '
+      .  variable_get('intermine_search_examples') )
     );
   }
 }
 
-function _intermine_search_service_url($keys, $conditions, $facets = array()) {
-    $params = array('q='.urlencode($keys));
-    foreach ($facets as $facet => $value) {
-        $params[] = 'facet_'.$facet.'='.$value;
-    }
-    return variable_get('intermine_base_url') . '/service/search?' . implode('&', $params);
+function _intermine_search_service_url($intermine_base_url, $keys, $conditions, $facets = array()) {
+  $params = array('q='.urlencode($keys));
+  foreach ($facets as $facet => $value) {
+    $facet = str_replace('_', '.', $facet);
+    $params[] = 'facet_' . $facet . '=' . urlencode($value);
+  }
+  $search_url = $intermine_base_url . '/service/search?' . implode('&', $params);
+  return $search_url;
 }
 
 function intermine_search_search_execute($keys = NULL, $conditions = NULL) {
   $facets = _intermine_search_extract_facets();
+
+  // get configured variables
+  $_intermine_name = variable_get('intermine_name');
+  $_intermine_base_url = variable_get('intermine_base_url');
+
+  // check if intermine_base_url is a json_encoded string containing
+  // references to multiple intermine instances
+  $intermines = array();
+  $intermines = json_decode($_intermine_base_url, true);
+  if ($intermines === null) {
+    $intermines[] = array('intermine_base_url' => "$_intermine_base_url", 'intermine_name' => "$_intermine_name");
+  } else {
+    $intermines = objectToArray($intermines);
+  }
+
+  // iterate through all intermines and initialize curl_multi() handles
+  $icurlHandles = array();
+  $mh = curl_multi_init();
+  foreach ($intermines as $intermine) {
+    $intermine_base_url = $intermine["intermine_base_url"];
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_URL, _intermine_search_service_url($intermine_base_url, $keys, $conditions, $facets));
+
+    $icurlHandles[$intermine_base_url] = $ch;
+    curl_multi_add_handle($mh, $ch);
+  }
+
+  // execute parallel curl requests to all remote mines
+  $active = null;
+  do {
+    $mrc = curl_multi_exec($mh, $active);
+  } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+
+  while ($active && $mrc == CURLM_OK) {
+    if (curl_multi_select($mh) != -1) {
+      do {
+        $mrc = curl_multi_exec($mh, $active);
+      } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+    }
+  }
+
+  // sequentially process json responses from each remote mines
+  // and store results in array()
   $results = array();
-  $ch = curl_init();
-  curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  // curl_setopt($ch, CURLOPT_SSLVERSION,3);
+  $extra = array();
+  foreach ($intermines as $intermine) {
+    $intermine_base_url = $intermine["intermine_base_url"];
+    $intermine_name = $intermine['intermine_name'];
 
-  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $ch = $icurlHandles[$intermine_base_url];
+    $response_json = curl_multi_getcontent($ch);
 
-  curl_setopt($ch, CURLOPT_URL, _intermine_search_service_url($keys, $conditions, $facets));
-  $response_json = curl_exec($ch);
-  curl_close($ch);
-  $response = json_decode($response_json);
-  if(!($response_json == NULL)){
-    if (count($response->results) > 0) {
-      foreach($response->results as $result) {
-        $results[] = array(
-         'link' => variable_get('intermine_base_url') . '/report.do?id=' . $result->id,
-         'type' => $result->type,
-         'title' => _intermine_search_result_title($result),
-         'snippet' => theme('intermine_search_result__'.strtolower($result->type), array('result' => $result))
-        );
+    $_results = array();
+    $_extra = array();
+
+    $_rel_tracker = array();
+    $_rel_counter = 0;
+    $response = json_decode($response_json);
+    if (! ($response_json == NULL) ) {
+      if (count($response->results) > 0) {
+        foreach($response->results as $result) {
+          $abs_relevance = strval($result->relevance);
+          // calculate a relative relevance value
+          // to be used to aggregate then sort results across multiple mines
+          if (!array_key_exists($abs_relevance, $_rel_tracker)) {
+            $_rel_counter++;
+            $_rel_tracker[$abs_relevance] = $_rel_counter;
+          }
+
+          // build results array element containing both absolute and relative relevance values
+          $_results[] = array(
+            'link' => $intermine['intermine_base_url'] . '/report.do?id=' . $result->id,
+            'type' => $result->type,
+            'title' => _intermine_search_result_title($result),
+            'absRelevance' => floatval($abs_relevance),
+            'relRelevance' => $_rel_tracker[$abs_relevance],
+            'snippet' => theme('intermine_search_result__'.strtolower($result->type), array('source' => $intermine_name, 'result' => $result))
+          );
+        }
+
+        // store extra info (about facets) in a separate object
+        // to be appended to the end of the $results object
+        $_extra = $response->facets;
       }
+    }
+    // recursively merge the above $_results object with the master $results object
+    // similarly merge the $_extra object as well
+    $results = array_merge_recursive($results, objectToArray($_results));
+    $extra = array_merge_recursive($extra, objectToArray($_extra));
 
-      $results[] = array(
-        'link' => '',
-        'type' => 'facets',
-        'extra' => $response->facets
-      );
-   }
- }
+    curl_multi_remove_handle($mh, $ch);
+  }
+
+  curl_multi_close($mh);
+
+  // sort results by relative relevance
+  usort($results, function($a, $b) {
+    return $a['relRelevance'] - $b['relRelevance'];
+  });
+
+  // iterate through facets array and calculate sum(counts) for each category/facet
+  foreach($extra as $facet => $elems) {
+    foreach($elems as $cat => $elem) {
+      if(is_array($elem)) {
+        $extra[$facet][$cat] = array_sum($elem);
+      }
+    }
+  }
+
+  // store facets as last elem of results array()
+  if (count($results) != 0) {
+    $results[] = array(
+      'link' => '',
+      'type' => 'facets',
+      'relRelevance' => 999999,
+      'extra' => $extra
+    );
+  }
+
   return $results;
 }
 
@@ -131,8 +226,8 @@ function intermine_search_search_page($results) {
   if (count($results) == 0) {
     $contentSearch = 'search/node/' . arg(2);
     $output['noresults'] = array(
-        '#markup' => '<h2>No results</h2><p>There were no results in ' . variable_get('intermine_name')
-                     . ' for your search term(s). Try searching '.l('Site Content', $contentSearch).' instead.</p>'
+      '#markup' => '<h2>No results</h2><p>There were no results in ' . variable_get('intermine_name')
+      . ' for your search term(s). Try searching '.l('Site Content', $contentSearch).' instead.</p>'
     );
   } else {
     $pageUrl = request_path();
@@ -158,7 +253,6 @@ function intermine_search_search_page($results) {
     }
 
     $summary['prefix']['#markup'] = '<div class="col-md-3"><h3>Refine results by:</h3>';
-
     $content['prefix']['#markup'] = '<div class="col-md-9"><ol class="search-results">';
 
     foreach ($results as $entry) {
@@ -181,7 +275,7 @@ function intermine_search_search_page($results) {
         $content[] = array(
           '#theme' => 'search_result',
           '#result' => $entry,
-          '#module' => 'my_module_name',
+          '#module' => 'intermine_search',
         );
       }
     }
@@ -213,27 +307,27 @@ function intermine_search_theme() {
 
 function _intermine_search_result_title($result) {
   switch($result->type) {
-    case 'Gene':
-    case 'MRNA':
-    case 'Protein':
-      return $result->fields->primaryIdentifier;
-    case 'Publication':
-      return $result->fields->title;
-    case 'Author':
-    case 'Lab':
-    case 'InteractionTerm':
-    case 'GOTerm':
-    case 'SOTerm':
-    case 'Sample':
-    case 'OntologyTerm':
-      return $result->fields->name;
-    case 'Synonym':
-      return $result->fields->value;
-    default:
-      // just return first object key
-      $fields = (Array)$result->fields;
-      $title = array_shift($fields);
-      return $title;
+  case 'Gene':
+  case 'MRNA':
+  case 'Protein':
+    return $result->fields->primaryIdentifier;
+  case 'Publication':
+    return $result->fields->title;
+  case 'Author':
+  case 'Lab':
+  case 'InteractionTerm':
+  case 'GOTerm':
+  case 'SOTerm':
+  case 'Sample':
+  case 'OntologyTerm':
+    return $result->fields->name;
+  case 'Synonym':
+    return $result->fields->value;
+  default:
+    // just return first object key
+    $fields = (Array)$result->fields;
+    $title = array_shift($fields);
+    return $title;
   }
 }
 
@@ -245,6 +339,7 @@ function _intermine_search_nice_field_name($field_name) {
 
 function theme_intermine_search_result($variables) {
   $result = $variables['result'];
+  $intermine_name = $variables['source'];
   $output = '<dl class="dl-horizontal">';
   $output .= '<dt>Result type</dt><dd><i class="fa fa-tag"></i> ' . $result->type . '</dd>';
   foreach ($result->fields as $name => $value) {
@@ -252,6 +347,26 @@ function theme_intermine_search_result($variables) {
     $output .= '<dt>'.$nice_name.'</dt>';
     $output .= '<dd>'.$value.'</dd>';
   }
+  $output .= '<dt>Source</dt>';
+  $output .= '<dd>'.$intermine_name.'</dd>';
   $output .= '</dl>';
   return $output;
+}
+
+
+/*
+  Helper function to convert stdClass objects to multi-dim array()
+  Code borrowed from http://j.mp/2AFqwFc
+ */
+function objectToArray($d) {
+  if (is_object($d)) {
+    $d = get_object_vars($d);
+  }
+
+  if (is_array($d)) {
+    return array_map(__FUNCTION__, $d);
+  }
+  else {
+    return $d;
+  }
 }

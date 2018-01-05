@@ -1,5 +1,5 @@
 # intermine-search-drupal
-Drupal module to enable searching a mine instance using InterMine Search API
+Drupal module to enable searching one or more mine instances using InterMine Search API, collating the response into a faceted results page.
 
 ## Installation
 
@@ -13,14 +13,30 @@ $ git clone https://github.com/jcvi-plant-genomics/intermine-search-drupal.git i
 ```
 $ drush pm-enable intermine_search
 ```
-3. On the module configuration page <http://locahost/admin/config/search/intermine_search>, update the settings to point to your InterMine instance. Click "Save Configuration" to store the settings in the database. For example, MedicMine was configured like so:  
-    1. Instance name: **MedicMine**
-    2. Base URL (without trailing slash): **http://medicmine.jcvi.org/medicmine**
-    3. Search examples: **e.g. Medtr2g036650, plasma membrane, sucrose synthase**
+3. On the module configuration page <http://locahost/admin/config/search/intermine_search>, update the settings.
+    - To point to your single InterMine instance (or a collection of InterMines). For example, MedicMine is configured like so:
+      * `intermine_name`: **MedicMine**
+      * `intermine_base_url`: **http://medicmine.jcvi.org/medicmine**
+      * `intermine_search_examples`: **e.g. Medtr2g036650, plasma membrane, sucrose synthase**
+    - To configure more than one remote InterMine instance, the URLs are encoded in a JSON object like so:
+      * `intermine_name`: **LegFed**
+      * `intermine_base_url`:
+          ```
+          [{"intermine_base_url":"http://medicmine.jcvi.org/medicmine","intermine_name":"MedicMine"},{"intermine_base_url":"https://mines.legumeinfo.org/soymine","intermine_name":"SoyMine"}]
+          ```
+      * `intermine_search_examples`: **e.g. Medtr2g036650, plasma membrane, sucrose synthase, Glyma.16G153700, Glyma.16G153700.1, BARCSOYSSR_04_1400, Seed yield 15-5**
+
+    Click "Save Configuration" to store the settings in the database.
+
 4. On the Drupal Search Settings page <http://localhost/admin/config/search/settings>, enable the "InterMine Search" module, set it as the "Default search module", and click "Save Configuration".
 
 ## Usage
 
-Any _%search_term%_ passed to the URL (like so: <http://localhost/search/medicmine/%search_term%>) will trigger a query against the Search API endpoint of the configured InterMine instance.
+Any `%search_term%` passed to the URL (like so: <http://localhost/search/%intermine_name%/%search_term%>) will trigger a query against the Search API endpoints of one or all the configured InterMine instances. For example:
 
-The results (returned in JSON format by the InterMine API) are used to populate a faceted, dynamic, search result page with contextual links to corresponding entities within the InterMine instance.
+1. MedicMine: <http://localhost/search/medicmine/sucrose%20synthase>
+2. LegFed: <http://localhost/search/legfed/circadian>
+
+The results (returned in JSON format by the InterMine API) are used to populate a faceted, dynamic, search result page with contextual links to corresponding entities within the InterMine instances.
+
+![InterMine Search Results](./images/intermine_search_drupal_results.png)
