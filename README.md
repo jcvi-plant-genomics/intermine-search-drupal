@@ -18,11 +18,16 @@ $ drush pm-enable intermine_search
       * `intermine_name`: **MedicMine**
       * `intermine_base_url`: **http://medicmine.jcvi.org/medicmine**
       * `intermine_search_examples`: **e.g. Medtr2g036650, plasma membrane, sucrose synthase**
-    - To configure more than one remote InterMine instance, the URLs are encoded in a JSON object like so:
+    - To configure more than one remote InterMine instance, the URLs are represented as a JSON array like so:
       * `intermine_name`: **LegFed**
       * `intermine_base_url`:
           ```
-          [{"intermine_base_url":"http://medicmine.jcvi.org/medicmine","intermine_name":"MedicMine"},{"intermine_base_url":"https://mines.legumeinfo.org/soymine","intermine_name":"SoyMine"}]
+            [{"intermine_base_url":"https://mines.legumeinfo.org/beanmine","intermine_name":"BeanMine"},
+            {"intermine_base_url":"https://mines.legumeinfo.org/chickpeamine","intermine_name":"ChickpeaMine"},
+            {"intermine_base_url":"https://mines.legumeinfo.org/cowpeamine","intermine_name":"CowpeaMine"},
+            {"intermine_base_url":"http://medicmine.jcvi.org/medicmine","intermine_name":"MedicMine"},
+            {"intermine_base_url":"https://mines.legumeinfo.org/peanutmine","intermine_name":"PeanutMine"},
+            {"intermine_base_url":"https://mines.legumeinfo.org/soymine","intermine_name":"SoyMine"}]
           ```
       * `intermine_search_examples`: **e.g. Medtr2g036650, plasma membrane, sucrose synthase, Glyma.16G153700, Glyma.16G153700.1, BARCSOYSSR_04_1400, Seed yield 15-5**
 
