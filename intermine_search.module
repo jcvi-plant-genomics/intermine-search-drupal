@@ -123,6 +123,8 @@ function intermine_search_search_execute($keys = NULL, $conditions = NULL) {
   } while ($mrc == CURLM_CALL_MULTI_PERFORM);
 
   while ($active && $mrc == CURLM_OK) {
+    while (curl_multi_exec($mh, $active) === CURLM_CALL_MULTI_PERFORM);
+
     if (curl_multi_select($mh) != -1) {
       do {
         $mrc = curl_multi_exec($mh, $active);
