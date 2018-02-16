@@ -8,7 +8,14 @@
   width: 100% !important;
 }
 
+.results-column {
+  padding: 5px 10px 5px 10px !important;
+}
+
 .results-column-fluid {
   flex-grow: 1;
-  padding: 5px 10px 5px 10px !important;
+}
+
+.results-column-fixed {
+  width: 70%;
 }

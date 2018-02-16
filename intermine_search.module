@@ -277,8 +277,8 @@ function intermine_search_search_page($results) {
       }
     }
 
-    $summary['prefix']['#markup'] = '<div class="sidebar block results-column-fluid"><h2 class="title">Refine results by:</h2>';
-    $content['prefix']['#markup'] = '<div class="results-column-fluid"><ol class="search-results">';
+    $summary['prefix']['#markup'] = '<div class="sidebar block results-column results-column-fluid"><h2 class="title">Refine results by:</h2>';
+    $content['prefix']['#markup'] = '<div class="results-column results-column-fixed"><ol class="search-results">';
 
     foreach ($results as $entry) {
       if ($entry['type'] == 'facets') {
