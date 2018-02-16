@@ -2,3 +2,13 @@
   background-color: #eee;
   padding: 0 3px;
 }
+
+.results-container {
+  display: flex;
+  width: 100% !important;
+}
+
+.results-column-fluid {
+  flex-grow: 1;
+  padding: 5px 10px 5px 10px !important;
+}

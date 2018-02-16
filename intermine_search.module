@@ -254,8 +254,8 @@ function intermine_search_search_page($results) {
       }
     }
 
-    $summary['prefix']['#markup'] = '<div class="col-md-3"><h3>Refine results by:</h3>';
-    $content['prefix']['#markup'] = '<div class="col-md-9"><ol class="search-results">';
+    $summary['prefix']['#markup'] = '<div class="sidebar block results-column-fluid"><h2 class="title">Refine results by:</h2>';
+    $content['prefix']['#markup'] = '<div class="results-column-fluid"><ol class="search-results">';
 
     foreach ($results as $entry) {
       if ($entry['type'] == 'facets') {
@@ -265,7 +265,7 @@ function intermine_search_search_page($results) {
           foreach ($info as $detail => $count) {
             $refine = $search_facets;
             $refine[$type] = $detail;
-            $items[] = l($detail. ' <span class="badge">'.$count.'</span>', $pageUrl, array('html' => true, 'query' => $refine));
+            $items[] = l($detail. ': <span class="badge">'.$count.'</span>', $pageUrl, array('html' => true, 'query' => $refine));
           }
           $summary['facets'][] = array(
             '#theme' => 'item_list',
@@ -285,7 +285,7 @@ function intermine_search_search_page($results) {
     $summary['suffix']['#markup'] = '</div>';
 
     $output['results'] = array(
-      'prefix' => array('#markup' => '<div class="row">'),
+      'prefix' => array('#markup' => '<div class="sidebar results-container">'),
       'summary' => $summary,
       'output' => $content,
       'suffix' => array('#markup' => '</div>'),
@@ -342,19 +342,19 @@ function _intermine_search_nice_field_name($field_name) {
 function theme_intermine_search_result($variables) {
   $result = $variables['result'];
   $intermine_name = $variables['source'];
-  $output = '<dl class="dl-horizontal">';
-  $output .= '<dt>Result type</dt><dd><i class="fa fa-tag"></i> ' . $result->type . '</dd>';
+
+  $snippet = '<dl class="dl-horizontal">';
+  $snippet .= '<dt><strong>Result type</strong></dt><dd><i class="fa fa-tag"></i> ' . $result->type . '</dd>';
   foreach ($result->fields as $name => $value) {
     $nice_name = _intermine_search_nice_field_name($name);
-    $output .= '<dt>'.$nice_name.'</dt>';
-    $output .= '<dd>'.$value.'</dd>';
+    $snippet .= '<dt>'.$nice_name.'</dt>';
+    $snippet .= '<dd>'.$value.'</dd>';
   }
-  $output .= '<dt>Source</dt>';
-  $output .= '<dd>'.$intermine_name.'</dd>';
-  $output .= '</dl>';
-  return $output;
-}
+  $snippet .= '<dt><strong>Source</strong></dt><dd>' . $intermine_name . '</dd>';
+  $snippet .= '</dl>';
 
+  return $snippet;
+}
 
 /*
   Helper function to convert stdClass objects to multi-dim array()
