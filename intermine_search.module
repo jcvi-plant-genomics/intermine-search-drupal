@@ -76,11 +76,23 @@ function intermine_search_form_search_form_alter(&$form, &$form_state) {
 function _intermine_search_service_url($intermine_base_url, $keys, $conditions, $facets = array()) {
   $params = array('q='.urlencode($keys));
   foreach ($facets as $facet => $value) {
+    if($facet == 'Source')
+      continue;
     $facet = str_replace('_', '.', $facet);
     $params[] = 'facet_' . $facet . '=' . urlencode($value);
   }
   $search_url = $intermine_base_url . '/service/search?' . implode('&', $params);
   return $search_url;
+}
+
+function _intermine_search_filter_available_mines($intermines = array(), $facets = array()) {
+  if(array_key_exists('Source', $facets)) {
+    $_intermine_name = $facets['Source'];
+    $intermines = array_filter($intermines, function ($var) use ($_intermine_name) {
+      return ($var['intermine_name'] == $_intermine_name);
+    });
+  }
+  return $intermines;
 }
 
 function intermine_search_search_execute($keys = NULL, $conditions = NULL) {
@@ -99,6 +111,9 @@ function intermine_search_search_execute($keys = NULL, $conditions = NULL) {
   } else {
     $intermines = objectToArray($intermines);
   }
+  // if the 'Source' facet is set, filter the list of available mines
+  // down to the the chosen instance
+  $intermines = _intermine_search_filter_available_mines($intermines, $facets);
 
   // iterate through all intermines and initialize curl_multi() handles
   $icurlHandles = array();
@@ -173,13 +188,21 @@ function intermine_search_search_execute($keys = NULL, $conditions = NULL) {
 
         // store extra info (about facets) in a separate object
         // to be appended to the end of the $results object
-        $_extra = $response->facets;
+        $_extra = objectToArray($response->facets);
+
+        // store source intermine name in facets
+        $catsum = 0;
+        foreach($_extra['Category'] as $cat => $elem) {
+          $catsum += $elem;
+        }
+        $_extra['Source'] = array($intermine_name => $catsum);
       }
     }
     // recursively merge the above $_results object with the master $results object
-    // similarly merge the $_extra object as well
     $results = array_merge_recursive($results, objectToArray($_results));
-    $extra = array_merge_recursive($extra, objectToArray($_extra));
+
+    // similarly merge the $_extra object with the master $extra object
+    $extra = array_merge_recursive($extra, $_extra);
 
     curl_multi_remove_handle($mh, $ch);
   }
