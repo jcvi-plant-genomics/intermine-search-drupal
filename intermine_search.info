@@ -2,6 +2,7 @@ name = InterMine Search
 description = Search integration for one (or more) remote InterMine instance(s).
 package = InterMine
 core = 7.x
+version = 7.x-2.0
 
 ; DEPENDENCIES
 dependencies[] = fontawesome:fontawesome
