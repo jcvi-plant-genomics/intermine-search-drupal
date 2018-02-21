@@ -345,7 +345,9 @@ function _intermine_search_result_title($result) {
   case 'SOTerm':
   case 'Sample':
   case 'OntologyTerm':
-    return $result->fields->name;
+    return isset($result->fields->name) ? $result->fields->name : (
+      isset($result->fields->description) ? $result->fields->description : $result->fields->identifier
+    );
   case 'Synonym':
     return $result->fields->value;
   default:
