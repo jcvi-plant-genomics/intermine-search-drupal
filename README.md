@@ -1,6 +1,13 @@
 # intermine-search-drupal
 Drupal module to enable searching one or more mine instances using InterMine Search API, collating the response into a faceted results page.
 
+## Dependencies
+
+* Font Awesome: https://www.drupal.org/project/fontawesome
+* External Links: https://www.drupal.org/project/exlink
+
+Note: The above dependencies will be automatically downloaded and installed, if not already available.
+
 ## Installation
 
 1. On the command line, change directory to the location of your Drupal modules and clone the `intermine-search-drupal` git repository, like so:
@@ -9,7 +16,7 @@ $ cd /opt/www/MTGD/htdocs/tripal
 $ cd sites/all/modules
 $ git clone https://github.com/jcvi-plant-genomics/intermine-search-drupal.git intermine_search
 ```
-2. On the Drupal modules page <http://localhost/admin/modules>, activate the "InterMine Search" module. This can also be done from the command-line via `drush`, like so:
+2. On the Drupal modules page <http://localhost/admin/modules>, activate the "InterMine Search" module. This can also be done from the command-line via `drush`, like so (choose `y` to install all required dependencies):
 ```
 $ drush pm-enable intermine_search
 ```
@@ -34,6 +41,8 @@ $ drush pm-enable intermine_search
     Click "Save Configuration" to store the settings in the database.
 
 4. On the Drupal Search Settings page <http://localhost/admin/config/search/settings>, enable the "InterMine Search" module, set it as the "Default search module", and click "Save Configuration".
+
+5. On the External Links module Settings page <http://localhost/admin/config/user-interface/extlink>, enable "Open external links in a new window", and click "Save Configuration".
 
 ## Usage
 

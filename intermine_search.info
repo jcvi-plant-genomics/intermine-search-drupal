@@ -2,7 +2,10 @@ name = InterMine Search
 description = Search integration for one (or more) remote InterMine instance(s).
 package = InterMine
 core = 7.x
-dependencies[] = fontawesome:fontawesome (>=7.x-2.6)
+
+; DEPENDENCIES
+dependencies[] = fontawesome:fontawesome
+dependencies[] = extlink:extlink
 
 ; ADMIN CONFIG
 configure = admin/config/search/intermine_search
