@@ -331,30 +331,29 @@ function intermine_search_theme() {
 }
 
 function _intermine_search_result_title($result) {
+  // extract the first object key and store as $defaultField
+  $fields = (Array)$result->fields;
+  $defaultField = array_shift($fields);
+
   switch($result->type) {
   case 'Gene':
   case 'MRNA':
   case 'Protein':
-    return $result->fields->primaryIdentifier;
+    return isset($result->fields->primaryIdentifier) ? $result->fields->primaryIdentifier : $defaultField;
   case 'Publication':
     return $result->fields->title;
   case 'Author':
   case 'Lab':
+  case 'Sample':
   case 'InteractionTerm':
   case 'GOTerm':
   case 'SOTerm':
-  case 'Sample':
   case 'OntologyTerm':
-    return isset($result->fields->name) ? $result->fields->name : (
-      isset($result->fields->description) ? $result->fields->description : $result->fields->identifier
-    );
+    return isset($result->fields->name) ? $result->fields->name : $defaultField;
   case 'Synonym':
     return $result->fields->value;
   default:
-    // just return first object key
-    $fields = (Array)$result->fields;
-    $title = array_shift($fields);
-    return $title;
+    return $defaultField;
   }
 }
 
