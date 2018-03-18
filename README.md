@@ -1,5 +1,5 @@
 # intermine-search-drupal
-Drupal module to enable searching one or more mine instances using InterMine Search API, collating the response into a faceted results page.
+Drupal module to enable searching one or more mine instances using the InterMine Search API, collating the response into a faceted results page.
 
 ## Dependencies
 
@@ -21,7 +21,7 @@ $ git clone https://github.com/jcvi-plant-genomics/intermine-search-drupal.git i
 $ drush pm-enable intermine_search
 ```
 3. On the module configuration page <http://locahost/admin/config/search/intermine_search>, update the settings.
-    - To point to your single InterMine instance (or a collection of InterMines). For example, MedicMine is configured like so:
+    - To point to a single InterMine instance, the settings are configured like so:
       * `intermine_name`: **MedicMine**
       * `intermine_base_url`: **http://medicmine.jcvi.org/medicmine**
       * `intermine_search_examples`: **e.g. Medtr2g036650, plasma membrane, sucrose synthase**
@@ -53,4 +53,8 @@ Any `%search_term%` passed to the URL (like so: <http://localhost/search/%interm
 
 The results (returned in JSON format by the InterMine API) are used to populate a faceted, dynamic, search result page with contextual links to corresponding entities within the InterMine instances.
 
-![InterMine Search Results](./images/intermine_search_drupal_results.png)
+## Examples
+
+* Single InterMine search: http://www.medicagogenome.org/search/medicmine/circadian
+* Cross-InterMine search: https://www.legumefederation.org/search/legfed/circadian
+![Cross-InterMine Search Results](./images/intermine_search_drupal_results.png)
